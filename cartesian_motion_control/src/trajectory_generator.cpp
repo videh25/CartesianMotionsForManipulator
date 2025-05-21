@@ -1,4 +1,7 @@
 #include "cartesian_motion_control/trajectory_generator.hpp"
+#include <kdl/frames.hpp>
+#include <kdl/trajectory_segment.hpp>
+#include <kdl/velocityprofile_trap.hpp>
 
 namespace cartesian_motion_control {
 
@@ -81,6 +84,34 @@ TrajectoryGenerator::convertCartesianTrajToJointSpace(
   }
 
   return final_joint_trajectory;
+}
+
+std::shared_ptr<KDL::Trajectory_Segment>
+TrajectoryGenerator::generateCartesianTrajectory(
+    geometry_msgs::msg::PoseArray::ConstSharedPtr waypoints,
+    const float &max_speed, const float &max_acc) {
+  std::shared_ptr<KDL::Path_RoundedComposite> path =
+      std::make_shared<KDL::Path_RoundedComposite>(
+          0.1, 0.001, new KDL::RotationalInterpolation_SingleAxis());
+
+  for (const geometry_msgs::msg::Pose &pose : waypoints->poses) {
+    KDL::Frame frame(
+        KDL::Rotation::Quaternion(pose.orientation.x, pose.orientation.y,
+                                  pose.orientation.z, pose.orientation.z),
+        KDL::Vector(pose.position.x, pose.position.y, pose.position.z));
+    path->Add(frame);
+  }
+  path->Finish();
+
+  std::shared_ptr<KDL::VelocityProfile_Trap> vel_profile =
+      std::make_shared<KDL::VelocityProfile_Trap>();
+  vel_profile->SetMax(max_speed, max_acc);
+  vel_profile->SetProfile(0.0, path->PathLength());
+
+  std::shared_ptr<KDL::Trajectory_Segment> trajectory =
+      std::make_shared<KDL::Trajectory_Segment>(path.get(), vel_profile.get());
+
+  return trajectory;
 }
 
 } // namespace cartesian_motion_control

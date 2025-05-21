@@ -20,7 +20,7 @@ find_package(Eigen3 REQUIRED)
 find_package(orocos_kdl REQUIRED)
 
 add_library(cartesian_trajectory_generator src/trajectory_generator.cpp)
-ament_target_dependencies(cartesian_trajectory_generator rclcpp trajectory_msgs urdf kdl_parser orocos_kdl Eigen3)
+ament_target_dependencies(cartesian_trajectory_generator rclcpp geometry_msgs trajectory_msgs urdf kdl_parser orocos_kdl Eigen3)
 target_include_directories(cartesian_trajectory_generator PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
