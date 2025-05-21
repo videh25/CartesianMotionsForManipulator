@@ -1,0 +1,11 @@
+# Request
+geometry_msgs/PoseArray waypoints
+float32 maximum_speed
+float32 maximum_acceleration
+---
+# Result
+bool success
+---
+# Feedback
+string feedback
+

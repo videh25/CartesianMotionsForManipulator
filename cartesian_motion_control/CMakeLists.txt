@@ -15,6 +15,8 @@ find_package(geometry_msgs REQUIRED)
 find_package(kdl_parser REQUIRED)
 find_package(urdf REQUIRED)
 find_package(trajectory_msgs REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(cartesian_motion_interfaces REQUIRED)
 
 find_package(Eigen3 REQUIRED)
 find_package(orocos_kdl REQUIRED)
@@ -25,22 +27,24 @@ target_include_directories(cartesian_trajectory_generator PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-add_executable(traj_gen_orocos src/traj_gen_orocos.cpp)
-ament_target_dependencies(traj_gen_orocos orocos_kdl Eigen3)
-target_include_directories(traj_gen_orocos PUBLIC
+add_library(cartesian_motion_server src/cartesian_motion_server.cpp)
+ament_target_dependencies(cartesian_motion_server cartesian_motion_interfaces rclcpp rclcpp_action trajectory_msgs geometry_msgs)
+target_include_directories(cartesian_motion_server PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+target_link_libraries(cartesian_motion_server cartesian_trajectory_generator)
 
-add_executable(ik_orocos src/ik_orocos.cpp)
-ament_target_dependencies(ik_orocos urdf kdl_parser orocos_kdl Eigen3)
-target_include_directories(ik_orocos PUBLIC
+add_executable(cartesian_motion_control_node src/main.cpp)
+ament_target_dependencies(cartesian_motion_control_node cartesian_motion_interfaces urdf kdl_parser orocos_kdl Eigen3)
+target_include_directories(cartesian_motion_control_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+target_link_libraries(cartesian_motion_control_node cartesian_motion_server)
 
 install(TARGETS
+  cartesian_motion_server
   cartesian_trajectory_generator
-  traj_gen_orocos
-  ik_orocos
+  cartesian_motion_control_node
   DESTINATION lib/${PROJECT_NAME})
 
 

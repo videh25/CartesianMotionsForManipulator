@@ -1,0 +1,7 @@
+cartesian_motion_server:
+  ros__parameters:
+    urdf_path: /home/videh22/Documents/catesian_motions_ws/src/cartesian_motion_control/urdf/ur10.urdf
+    chain_start_link: base_link
+    chain_end_link: tool0
+    sampling_dt: 0.05
+    joint_trajectory_topic: /joint_trajectory

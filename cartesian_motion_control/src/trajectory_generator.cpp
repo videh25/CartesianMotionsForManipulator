@@ -88,13 +88,13 @@ TrajectoryGenerator::convertCartesianTrajToJointSpace(
 
 std::shared_ptr<KDL::Trajectory_Segment>
 TrajectoryGenerator::generateCartesianTrajectory(
-    geometry_msgs::msg::PoseArray::ConstSharedPtr waypoints,
-    const float &max_speed, const float &max_acc) {
+    const geometry_msgs::msg::PoseArray &waypoints, const float &max_speed,
+    const float &max_acc) {
   std::shared_ptr<KDL::Path_RoundedComposite> path =
       std::make_shared<KDL::Path_RoundedComposite>(
           0.1, 0.001, new KDL::RotationalInterpolation_SingleAxis());
 
-  for (const geometry_msgs::msg::Pose &pose : waypoints->poses) {
+  for (const geometry_msgs::msg::Pose &pose : waypoints.poses) {
     KDL::Frame frame(
         KDL::Rotation::Quaternion(pose.orientation.x, pose.orientation.y,
                                   pose.orientation.z, pose.orientation.z),

@@ -31,9 +31,9 @@ public:
   convertCartesianTrajToJointSpace(
       const std::shared_ptr<KDL::Trajectory_Segment> &cartesian_trajectory,
       const float sampling_dt);
-  std::shared_ptr<KDL::Trajectory_Segment> generateCartesianTrajectory(
-      geometry_msgs::msg::PoseArray::ConstSharedPtr waypoints,
-      const float &max_speed, const float &max_acc);
+  std::shared_ptr<KDL::Trajectory_Segment>
+  generateCartesianTrajectory(const geometry_msgs::msg::PoseArray &waypoints,
+                              const float &max_speed, const float &max_acc);
 
 protected:
   KDL::Tree kdl_tree;
