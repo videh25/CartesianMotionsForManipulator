@@ -1,128 +1,86 @@
 #include "cartesian_motion_control/trajectory_generator.hpp"
-#include <cmath>
-#include <eigen3/Eigen/src/Core/Matrix.h>
-#include <eigen3/unsupported/Eigen/src/Splines/Spline.h>
-#include <memory>
-#include <rclcpp/detail/resolve_use_intra_process.hpp>
-#include <stdexcept>
-#include <vector>
 
 namespace cartesian_motion_control {
 
-std::shared_ptr<std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>>>
-TrajectoryGenerator::generate_spline(
-    geometry_msgs::msg::PoseArray::ConstSharedPtr const pose_array) {
-  int num_waypoints = pose_array->poses.size();
+TrajectoryGenerator::TrajectoryGenerator(const std::string &urdf_path,
+                                         const std::string &chain_start_link,
+                                         const std::string &chain_end_link) {
+  urdf::Model model;
+  model.initFile(urdf_path);
+  kdl_parser::treeFromUrdfModel(model, kdl_tree);
 
-  std::shared_ptr<std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>>>
-      return_trajectory = std::make_shared<
-          std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>>>();
+  KDL::Chain ur10_chain;
+  kdl_tree.getChain(chain_start_link, chain_end_link, robot_chain);
 
-  if (dt == 0.0) {
-    throw std::runtime_error(
-        "Sampling time interval not set before generating spline");
+  // Default joint limits of -pi to +pi
+  unsigned int nj = ur10_chain.getNrOfJoints();
+  KDL::JntArray q_min(nj), q_max(nj);
+  for (u_int i = 0; i < nj; i++) {
+    q_min(i) = -M_PI;
+    q_max(i) = M_PI;
   }
 
-  if (num_waypoints == 2) {
-    // Use lerp
-    const Eigen::Vector3d a(pose_array->poses[0].position.x,
-                            pose_array->poses[0].position.y,
-                            pose_array->poses[0].position.z);
-    const Eigen::Vector3d b(pose_array->poses[1].position.x,
-                            pose_array->poses[1].position.y,
-                            pose_array->poses[1].position.z);
+  fk_solver = std::make_shared<KDL::ChainFkSolverPos_recursive>(robot_chain);
+  ik_vel_solver = std::make_shared<KDL::ChainIkSolverVel_pinv>(robot_chain);
+  ik_pos_solver = std::make_shared<KDL::ChainIkSolverPos_NR_JL>(
+      robot_chain, q_min, q_max, *fk_solver, *ik_vel_solver, 100, 1e-6);
+  // Solvers initialised
 
-    const float distance = (b - a).norm();
-    const Eigen::Vector3d direction = (b - a) * 1 / distance;
-    const float constant_speed_distance_test = distance - 2 * ramp_distance;
+  for (const auto &joint_pair : model.joints_) {
+    const urdf::JointSharedPtr &joint = joint_pair.second;
 
-    float max_speed, final_ramp_distance, constant_speed_distance;
-    if (constant_speed_distance_test <= 0.0) {
-      // ramp up; ramp down
-      final_ramp_distance = distance / 2;
-      max_speed = std::sqrt(acceleration_max * distance);
-      constant_speed_distance = 0.0;
-    } else {
-      // ramp up; const; ramp down
-      final_ramp_distance = ramp_distance;
-      max_speed = end_effector_speed;
-      constant_speed_distance = constant_speed_distance_test;
+    // Filter fixed joints
+    if (joint->type != urdf::Joint::FIXED) {
+      joint_names.push_back(joint->name);
     }
-
-    float time_ramp = max_speed / acceleration_max;
-    float time_constant = constant_speed_distance / max_speed;
-
-    float t = 0.0; // Time to iterate over
-    float s = 0.0; // Current distance from start of end-effector
-    float v = 0.0; // Current distance from start of end-effector
-    std::pair<Eigen::Vector3d, Eigen::Vector3d> position_velocity_pair;
-    float this_portion_t = 0.0;
-
-    for (; t < time_ramp; t += dt) {
-      this_portion_t = t;
-      s = 0.5 * acceleration_max * this_portion_t * this_portion_t;
-      v = acceleration_max * this_portion_t;
-
-      position_velocity_pair.first = a + direction * s;
-      position_velocity_pair.second = v * direction;
-      return_trajectory->push_back(position_velocity_pair);
-    }
-
-    for (; t < time_ramp + time_constant; t += dt) {
-      this_portion_t = t - time_ramp;
-      s = final_ramp_distance + this_portion_t * max_speed;
-      v = max_speed;
-
-      position_velocity_pair.first = a + direction * s;
-      position_velocity_pair.second = v * direction;
-      return_trajectory->push_back(position_velocity_pair);
-    }
-
-    for (; t <= 2 * time_ramp + time_constant; t += dt) {
-      this_portion_t = t - time_ramp - time_constant;
-      s = final_ramp_distance + constant_speed_distance +
-          (max_speed * this_portion_t -
-           0.5 * acceleration_max * this_portion_t * this_portion_t);
-      v = max_speed - acceleration_max * this_portion_t;
-
-      position_velocity_pair.first = a + direction * s;
-      position_velocity_pair.second = v * direction;
-      return_trajectory->push_back(position_velocity_pair);
-    }
-
-  } else if (num_waypoints == 3) {
-    // Use quadratic bezier/polynomial
-  } else if (num_waypoints > 3) {
-    // Use cubic bezier
-  } else { // 1 point
-    throw std::invalid_argument(
-        "One waypoint passed in the pose_array. Need 2 or "
-        "more to generate trajectory");
-  }
-
-  return return_trajectory;
-}
-
-void TrajectoryGenerator::set_max_speed(const float &end_effector_speed_) {
-  end_effector_speed = end_effector_speed_;
-  recalculate_ramp_distance();
-  return;
-}
-
-void TrajectoryGenerator::set_acceleration_max(const float &acceleration_max_) {
-  acceleration_max = acceleration_max_;
-  recalculate_ramp_distance();
-  return;
-}
-
-void TrajectoryGenerator::recalculate_ramp_distance() {
-  if (acceleration_max) {
-    // Assuming the manipulator is stationary at start and end
-    ramp_distance =
-        end_effector_speed * end_effector_speed / (2 * acceleration_max);
   }
 }
 
-void TrajectoryGenerator::set_sampling_dt(const float dt_) { dt = dt_; }
+std::shared_ptr<trajectory_msgs::msg::JointTrajectory>
+TrajectoryGenerator::convertCartesianTrajToJointSpace(
+    const std::shared_ptr<KDL::Trajectory_Segment> &cartesian_trajectory,
+    const float sampling_dt) {
+
+  double duration = cartesian_trajectory->Duration();
+  std::cout << "Trajectory duration: " << duration << " seconds" << std::endl;
+
+  std::shared_ptr<trajectory_msgs::msg::JointTrajectory> final_joint_trajectory;
+  final_joint_trajectory->joint_names = joint_names;
+
+  KDL::Frame pos;
+  KDL::Twist twi;
+  KDL::JntArray q_last(robot_chain.getNrOfJoints());
+  KDL::JntArray q_this(robot_chain.getNrOfJoints());
+  KDL::JntArray q_vel_this(robot_chain.getNrOfJoints());
+  for (u_int i = 0; i < robot_chain.getNrOfJoints(); i++) {
+    q_last(i) = 0.0;
+    q_this(i) = 0.0;
+    q_vel_this(i) = 0.0;
+  }
+
+  trajectory_msgs::msg::JointTrajectoryPoint jt_point_this;
+  for (double t = 0; t <= duration; t += sampling_dt) {
+    pos = cartesian_trajectory->Pos(t);
+    twi = cartesian_trajectory->Vel(t);
+
+    ik_pos_solver->CartToJnt(q_last, pos, q_this);
+    ik_vel_solver->CartToJnt(q_this, twi, q_vel_this);
+
+    jt_point_this.positions.clear();
+    jt_point_this.velocities.clear();
+    for (u_int i = 0; i < robot_chain.getNrOfJoints(); i++) {
+      jt_point_this.positions.push_back(q_this(i));
+      jt_point_this.velocities.push_back(q_vel_this(i));
+    }
+    jt_point_this.time_from_start = rclcpp::Duration::from_seconds(t);
+
+    final_joint_trajectory->points.push_back(jt_point_this);
+
+    // Maintain the last joint solution for chain solving
+    q_last = q_this;
+  }
+
+  return final_joint_trajectory;
+}
 
 } // namespace cartesian_motion_control

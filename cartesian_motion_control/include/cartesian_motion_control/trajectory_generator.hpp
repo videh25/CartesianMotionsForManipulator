@@ -1,51 +1,44 @@
 #ifndef __TRAJECTORY_GENERATOR_HPP__
 #define __TRAJECTORY_GENERATOR_HPP__
 
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/src/Core/Matrix.h>
-#include <eigen3/unsupported/Eigen/Splines>
-
-#include <geometry_msgs/msg/detail/pose__struct.hpp>
-#include <geometry_msgs/msg/pose_array.hpp>
+#include <kdl/chain.hpp>
+#include <kdl/chainfksolverpos_recursive.hpp>
+#include <kdl/chainiksolverpos_nr_jl.hpp>
+#include <kdl/chainiksolvervel_pinv.hpp>
+#include <kdl/jntarray.hpp>
+#include <kdl/trajectory_segment.hpp>
+#include <kdl/tree.hpp>
+#include <kdl_parser/kdl_parser.hpp>
+#include <memory>
 #include <rclcpp/rclcpp.hpp>
+#include <trajectory_msgs/msg/joint_trajectory.hpp>
+#include <urdf/model.h>
+
+#include <string>
 
 namespace cartesian_motion_control {
 
 class TrajectoryGenerator {
 public:
-  TrajectoryGenerator(const TrajectoryGenerator &) = delete;
-  TrajectoryGenerator &operator=(const TrajectoryGenerator &) = delete;
-  TrajectoryGenerator(TrajectoryGenerator &&) = delete;
-  TrajectoryGenerator &operator=(TrajectoryGenerator &&) = delete;
+  TrajectoryGenerator(const std::string &urdf_path,
+                      const std::string &chain_start_link,
+                      const std::string &chain_end_link);
 
-  static TrajectoryGenerator &GetInstance() {
-    static TrajectoryGenerator
-        instance; // Guaranteed to be initialized once in a thread-safe manner
-    return instance;
-  };
-
-  void set_max_speed(const float &end_effector_speed);
-  void set_acceleration_max(const float &acceleration_max_);
-  void set_sampling_dt(const float dt_);
-
-  std::shared_ptr<std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>>>
-  generate_spline(
-      geometry_msgs::msg::PoseArray::ConstSharedPtr const pose_array);
+  std::shared_ptr<trajectory_msgs::msg::JointTrajectory>
+  convertCartesianTrajToJointSpace(
+      const std::shared_ptr<KDL::Trajectory_Segment> &cartesian_trajectory,
+      const float sampling_dt);
 
 protected:
-  float end_effector_speed;
-  float acceleration_max;
-  float ramp_distance;
-  float dt; // Sampling time interval
+  KDL::Tree kdl_tree;
+  KDL::Chain robot_chain;
+  std::vector<std::string> joint_names;
 
-  void recalculate_ramp_distance();
+  std::shared_ptr<KDL::ChainFkSolverPos_recursive> fk_solver;
+  std::shared_ptr<KDL::ChainIkSolverVel_pinv> ik_vel_solver;
+  std::shared_ptr<KDL::ChainIkSolverPos_NR_JL> ik_pos_solver;
 
-private:
-  TrajectoryGenerator() {};
-  ~TrajectoryGenerator() {};
-  static TrajectoryGenerator instance;
-};
+}; // namespace cartesian_motion_control
 
 } // namespace cartesian_motion_control
-
 #endif

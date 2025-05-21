@@ -14,12 +14,13 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(kdl_parser REQUIRED)
 find_package(urdf REQUIRED)
+find_package(trajectory_msgs REQUIRED)
 
 find_package(Eigen3 REQUIRED)
 find_package(orocos_kdl REQUIRED)
 
 add_library(cartesian_trajectory_generator src/trajectory_generator.cpp)
-ament_target_dependencies(cartesian_trajectory_generator geometry_msgs rclcpp Eigen3)
+ament_target_dependencies(cartesian_trajectory_generator rclcpp trajectory_msgs urdf kdl_parser orocos_kdl Eigen3)
 target_include_directories(cartesian_trajectory_generator PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
