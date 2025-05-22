@@ -64,7 +64,7 @@ public:
     fk_solver = std::make_shared<KDL::ChainFkSolverPos_recursive>(robot_chain);
     ik_vel_solver = std::make_shared<KDL::ChainIkSolverVel_pinv>(robot_chain);
     ik_pos_solver = std::make_shared<KDL::ChainIkSolverPos_NR_JL>(
-        robot_chain, q_min, q_max, *fk_solver, *ik_vel_solver, 300, 1e-2);
+        robot_chain, q_min, q_max, *fk_solver, *ik_vel_solver, 200, 1e-4);
 
     std::vector<std::string> joint_names;
     std::cout << "KDL Parsed " << robot_chain.getNrOfJoints() << " joints"

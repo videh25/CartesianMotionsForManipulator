@@ -55,9 +55,12 @@ CartesianTrajectoryServer::CartesianTrajectoryServer(
       [this](sensor_msgs::msg::JointState::SharedPtr msg) {
         std::lock_guard<std::mutex> lg_(robot_state_mtx);
         last_jnt_state.resize(msg->position.size());
+        // std::cout << "Updating robot pose to: [";
         for (u_int i = 0; i < msg->position.size(); i++) {
+          // std::cout << msg->position[i] << ", ";
           last_jnt_state(i) = msg->position[i];
         }
+        // std::cout << "]" << std::endl;
       };
   robot_state_subscription =
       this->create_subscription<sensor_msgs::msg::JointState>(
