@@ -52,8 +52,14 @@ TrajectoryGenerator::convertCartesianTrajToJointSpace(
     twi = cartesian_trajectory->Vel(t);
 
     // Convert this pose to cspace
-    ik_solver_handler->ConvertToJointSpaceOnce(pos, twi, q_last, q_this,
-                                               q_vel_this);
+    bool ik_success = ik_solver_handler->ConvertToJointSpaceOnce(
+        pos, twi, q_last, q_this, q_vel_this);
+
+    if (!ik_success) {
+      // IK Failed once and hence stopping
+      final_joint_trajectory.reset();
+      return final_joint_trajectory;
+    }
 
     // Store in the trajectory msg
     for (u_int i = 0; i < nj; i++) {

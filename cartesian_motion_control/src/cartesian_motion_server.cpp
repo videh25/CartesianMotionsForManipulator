@@ -5,6 +5,7 @@
 #include <memory>
 #include <mutex>
 #include <rclcpp_action/server.hpp>
+#include <rcpputils/join.hpp>
 #include <sensor_msgs/msg/detail/joint_state__struct.hpp>
 #include <trajectory_msgs/msg/detail/joint_trajectory__struct.hpp>
 #include <vector>
@@ -119,6 +120,17 @@ void CartesianTrajectoryServer::execute(
 
   auto joint_trajectory = tg_->convertCartesianTrajToJointSpace(
       trajectory, sampling_dt, robot_state);
+
+  if (!joint_trajectory) {
+    feedback->feedback = "Was not able to convert to C-Space";
+    goal_handle->publish_feedback(feedback);
+
+    result->success = false;
+    goal_handle->succeed(result);
+    RCLCPP_INFO(this->get_logger(), "Trajectory generation failed!");
+    return;
+  }
+
   feedback->feedback = "Generated a joint trajectory of " +
                        std::to_string(joint_trajectory->points.size()) +
                        " elemenets";
@@ -133,6 +145,7 @@ void CartesianTrajectoryServer::execute(
 
   result->success = true;
   goal_handle->succeed(result);
-  RCLCPP_INFO(this->get_logger(), "Trajectory executed!");
+  RCLCPP_INFO(this->get_logger(), "Trajectory published!");
+  return;
 }
 } // namespace cartesian_motion_control

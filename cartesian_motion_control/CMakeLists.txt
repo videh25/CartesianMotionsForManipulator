@@ -5,7 +5,12 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# find dependencies
+# find dependencie
+add_library(NLopt::nlopt UNKNOWN IMPORTED)
+set_target_properties(NLopt::nlopt PROPERTIES
+    IMPORTED_LOCATION "/usr/lib/x86_64-linux-gnu/libnlopt.so"
+    INTERFACE_INCLUDE_DIRECTORIES "/usr/include"
+)
 find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -21,9 +26,11 @@ find_package(cartesian_motion_interfaces REQUIRED)
 
 find_package(Eigen3 REQUIRED)
 find_package(orocos_kdl REQUIRED)
+find_package(trac_ik_lib REQUIRED)
+find_package(NLopt REQUIRED)
 
 add_library(cartesian_trajectory_generator src/trajectory_generator.cpp)
-ament_target_dependencies(cartesian_trajectory_generator rclcpp sensor_msgs geometry_msgs trajectory_msgs urdf kdl_parser orocos_kdl Eigen3)
+ament_target_dependencies(cartesian_trajectory_generator rclcpp trac_ik_lib NLopt sensor_msgs geometry_msgs trajectory_msgs urdf kdl_parser orocos_kdl Eigen3)
 target_include_directories(cartesian_trajectory_generator PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
