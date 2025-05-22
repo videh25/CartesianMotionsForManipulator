@@ -57,14 +57,14 @@ public:
     unsigned int nj = robot_chain.getNrOfJoints();
     KDL::JntArray q_min(nj), q_max(nj);
     for (u_int i = 0; i < nj; i++) {
-      q_min(i) = -M_PI / 2;
-      q_max(i) = M_PI / 2;
+      q_min(i) = -M_PI;
+      q_max(i) = M_PI;
     }
 
     fk_solver = std::make_shared<KDL::ChainFkSolverPos_recursive>(robot_chain);
     ik_vel_solver = std::make_shared<KDL::ChainIkSolverVel_pinv>(robot_chain);
     ik_pos_solver = std::make_shared<KDL::ChainIkSolverPos_NR_JL>(
-        robot_chain, q_min, q_max, *fk_solver, *ik_vel_solver, 100, 1e-6);
+        robot_chain, q_min, q_max, *fk_solver, *ik_vel_solver, 300, 1e-2);
 
     std::vector<std::string> joint_names;
     std::cout << "KDL Parsed " << robot_chain.getNrOfJoints() << " joints"
