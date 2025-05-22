@@ -1,6 +1,7 @@
 #ifndef __IK_SOVLER_HANDLER__
 #define __IK_SOVLER_HANDLER__
 
+#include <iostream>
 #include <kdl/chain.hpp>
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/chainiksolverpos_nr_jl.hpp>
@@ -56,14 +57,30 @@ public:
     unsigned int nj = robot_chain.getNrOfJoints();
     KDL::JntArray q_min(nj), q_max(nj);
     for (u_int i = 0; i < nj; i++) {
-      q_min(i) = -M_PI;
-      q_max(i) = M_PI;
+      q_min(i) = -M_PI / 2;
+      q_max(i) = M_PI / 2;
     }
 
     fk_solver = std::make_shared<KDL::ChainFkSolverPos_recursive>(robot_chain);
     ik_vel_solver = std::make_shared<KDL::ChainIkSolverVel_pinv>(robot_chain);
     ik_pos_solver = std::make_shared<KDL::ChainIkSolverPos_NR_JL>(
         robot_chain, q_min, q_max, *fk_solver, *ik_vel_solver, 100, 1e-6);
+
+    std::vector<std::string> joint_names;
+    std::cout << "KDL Parsed " << robot_chain.getNrOfJoints() << " joints"
+              << std::endl;
+    std::cout << "Joint Names: [";
+    for (unsigned int i = 0; i < robot_chain.getNrOfSegments(); ++i) {
+      const KDL::Joint &joint = robot_chain.getSegment(i).getJoint();
+      KDL::Joint::JointType jtype = joint.getType();
+      if ((jtype == KDL::Joint::JointType::RotAxis) ||
+          (jtype == KDL::Joint::JointType::RotX) ||
+          (jtype == KDL::Joint::JointType::RotY) ||
+          (jtype == KDL::Joint::JointType::RotZ)) {
+        std::cout << joint.getName() << ", ";
+      }
+    }
+    std::cout << "]" << std::endl;
     return true;
   }
 
@@ -74,6 +91,16 @@ public:
                                KDL::JntArray &q_vel_this) override {
     ik_pos_solver->CartToJnt(q_last, this_pos, q_this);
     ik_vel_solver->CartToJnt(q_this, this_twist, q_vel_this);
+
+    // Check if ik is working correctly
+    KDL::Frame test_frame;
+    fk_solver->JntToCart(q_this, test_frame);
+    if (!KDL::Equal(test_frame.p, this_pos.p, 1e-4)) {
+      std::cout << "IK Failure detected in frame vector" << std::endl;
+    }
+    if (!KDL::Equal(test_frame.M, this_pos.M, 1e-4)) {
+      std::cout << "IK Failure detected in frame rotation" << std::endl;
+    }
   }
 
 protected:
