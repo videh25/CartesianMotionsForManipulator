@@ -15,6 +15,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(kdl_parser REQUIRED)
 find_package(urdf REQUIRED)
 find_package(trajectory_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(cartesian_motion_interfaces REQUIRED)
 
@@ -22,13 +23,13 @@ find_package(Eigen3 REQUIRED)
 find_package(orocos_kdl REQUIRED)
 
 add_library(cartesian_trajectory_generator src/trajectory_generator.cpp)
-ament_target_dependencies(cartesian_trajectory_generator rclcpp geometry_msgs trajectory_msgs urdf kdl_parser orocos_kdl Eigen3)
+ament_target_dependencies(cartesian_trajectory_generator rclcpp sensor_msgs geometry_msgs trajectory_msgs urdf kdl_parser orocos_kdl Eigen3)
 target_include_directories(cartesian_trajectory_generator PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
 add_library(cartesian_motion_server src/cartesian_motion_server.cpp)
-ament_target_dependencies(cartesian_motion_server cartesian_motion_interfaces rclcpp rclcpp_action trajectory_msgs geometry_msgs)
+ament_target_dependencies(cartesian_motion_server cartesian_motion_interfaces sensor_msgs rclcpp rclcpp_action trajectory_msgs geometry_msgs)
 target_include_directories(cartesian_motion_server PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
@@ -45,7 +46,12 @@ install(TARGETS
   cartesian_motion_server
   cartesian_trajectory_generator
   cartesian_motion_control_node
-  DESTINATION lib/${PROJECT_NAME})
+
+  DESTINATION lib/${PROJECT_NAME}
+)
+install(DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
 
 
 if(BUILD_TESTING)

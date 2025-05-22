@@ -3,5 +3,13 @@ cartesian_motion_server:
     urdf_path: /home/videh22/Documents/catesian_motions_ws/src/cartesian_motion_control/urdf/ur10.urdf
     chain_start_link: base_link
     chain_end_link: tool0
-    sampling_dt: 0.05
-    joint_trajectory_topic: /joint_trajectory
+    sampling_dt: 0.03
+    joint_trajectory_topic: /joint_trajectory_controller/joint_trajectory
+    robot_state_topic: /joint_states
+    link_names:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint

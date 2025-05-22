@@ -15,6 +15,7 @@
   <depend> kdl_parser </depend>
   <depend> urdf </depend>
   <depend> trajectory_msgs </depend>
+  <depend> sensor_msgs </depend>
   <depend> rclcpp_action </depend>
 
   <test_depend>ament_lint_auto</test_depend>
