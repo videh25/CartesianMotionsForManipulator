@@ -110,3 +110,5 @@ NOTE: A lot of time was spent just on debugging the issues with KDL and TracIK l
 ![joint_speed@0.04](./docs/images/joint_speeds_0_04.png "Angle Velocity Plots at speed = 0.04 m/s")
 
 ## Execution Media
+You can find execution videos at [this link](https://drive.google.com/drive/folders/1Ryi8qjyBMUCycHcLb4KJwYRmy3IUl6J1?usp=drive_link) 
+
