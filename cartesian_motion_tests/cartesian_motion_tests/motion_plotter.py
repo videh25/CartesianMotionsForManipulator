@@ -79,21 +79,21 @@ class TrajectoryPlotter(Node):
                 self.joint_names = msg.joint_names
 
             self.joint_times.append(timestamp)
-            self.joint_actual.append(list(msg.feedback.positions))
-            # self.joint_actual.append(list(msg.feedback.velocities))
-            self.joint_commanded.append(list(msg.reference.positions))
+            # self.joint_actual.append(list(msg.feedback.positions))
+            self.joint_actual.append(list(msg.feedback.velocities))
+            # self.joint_commanded.append(list(msg.reference.positions))
 
     def plot(self):
         with self.lock:
             # TF speed
             plt.figure()
             plt.plot(self.tf_times, self.tf_speeds)
-            plt.title("Tool Linear Speed (base_link -> tool0)")
+            plt.title("Tool Linear Speed (base_link -> tool0) @ ee_speed @ 0.04 m/s")
             plt.xlabel("Time [s]")
             plt.ylabel("Speed [m/s]")
             plt.grid(True)
 
-            # Joint angles
+            # Joint angles - all in one figure with subplots
             if not self.joint_times or not self.joint_actual:
                 print("No joint data recorded.")
                 return
@@ -102,18 +102,22 @@ class TrajectoryPlotter(Node):
             commanded = np.array(self.joint_commanded)
             times = np.array(self.joint_times)
 
-            for i, name in enumerate(self.joint_names):
-                plt.figure()
-                plt.plot(times, actual[:, i], label=f"{name} actual")
-                plt.plot(
-                    times, commanded[:, i], label=f"{name} commanded", linestyle="--"
-                )
-                plt.title(f"Joint: {name}")
-                plt.xlabel("Time [s]")
-                plt.ylabel("Angle [rad]")
-                plt.legend()
-                plt.grid(True)
+            num_joints = len(self.joint_names)
+            fig, axs = plt.subplots(
+                num_joints, 1, sharex=True, figsize=(10, 2.5 * num_joints)
+            )
+            fig.suptitle("Joint Velocities @ ee_speed = 0.04 m/s")
 
+            for i, name in enumerate(self.joint_names):
+                ax = axs[i]
+                ax.plot(times, actual[:, i], label="Actual Velocities")
+                # ax.plot(times, commanded[:, i], label="Commanded", linestyle="--")
+                ax.set_ylabel(f"{name}\n[rad/s]")
+                ax.grid(True)
+                ax.legend(loc="upper right")
+
+            axs[-1].set_xlabel("Time [s]")
+            plt.tight_layout(rect=[0, 0, 1, 0.97])
             plt.show()
 
 

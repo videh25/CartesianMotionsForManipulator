@@ -112,8 +112,8 @@ def main(args=None):
         # make_pose(0.202, 0.165, 0.606, -0.488, 0.481, -0.512, 0.518),
     ]
 
-    max_speed = 0.01  # m/s
-    max_acc = 0.05  # m/s²
+    max_speed = 0.04  # m/s
+    max_acc = 0.01  # m/s²
 
     traj_msg = JointTrajectory()
     traj_msg.joint_names = client.joint_names
@@ -121,7 +121,7 @@ def main(args=None):
     point.positions = target_positions
     point.time_from_start.sec = 2  # reach target in 2 seconds
     traj_msg.points.append(point)
-    # client.joint_angles_publisher.publish(traj_msg)
+    client.joint_angles_publisher.publish(traj_msg)
     print("Sleeping for 10 seconds after publishing initial angles")
     sleep(10)
 

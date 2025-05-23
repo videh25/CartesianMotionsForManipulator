@@ -13,7 +13,7 @@ class SinusoidalTrajectoryTester(Node):
         super().__init__("sinusoidal_trajectory_tester")
 
         # ==== Configuration ====
-        self.joint_name = "wrist_1_joint"  #  Change this to match your setup
+        self.joint_name = "elbow_joint"  #  Change this to match your setup
         self.trajectory_duration = 6.0  # seconds
         self.publish_rate = 50  # Hz
         self.amplitude = 3.14  # rad/s (velocity)
@@ -43,7 +43,8 @@ class SinusoidalTrajectoryTester(Node):
         num_points = int(self.trajectory_duration * self.publish_rate)
         times = np.linspace(0, self.trajectory_duration, num_points)
         velocities = self.amplitude * np.sin(2 * np.pi * self.frequency * times)
-        positions = -np.pi / 2 + np.cumsum(velocities) * (1 / self.publish_rate)
+        positions = -0.0 / 2 + np.cumsum(velocities) * (1 / self.publish_rate)
+        # initial position of joint here
 
         msg = JointTrajectory()
         msg.joint_names = [self.joint_name]
