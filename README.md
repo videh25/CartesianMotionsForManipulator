@@ -92,17 +92,20 @@ NOTE: A lot of time was spent just on debugging the issues with KDL and TracIK l
 
 ## Plots for different End Effector speeds
 1. Tool Speed = 0.01 m/s
-![tool_speed@0.01](./docs/images/tool_speed_0_01.png.png "Tool Speed Plot at speed = 0.01 m/s")
+
+![tool_speed@0.01](./docs/images/tool_speed_0_01.png "Tool Speed Plot at speed = 0.01 m/s")
 
 ![joint_speed@0.01](./docs/images/joint_speeds_0_01.png "Angle Velocity Plots at speed = 0.01 m/s")
 
 2. Tool Speed = 0.02 m/s
-![tool_speed@0.02](./docs/images/tool_speed_0_02.png.png "Tool Speed Plot at speed = 0.02 m/s")
+
+![tool_speed@0.02](./docs/images/tool_speed_0_02.png "Tool Speed Plot at speed = 0.02 m/s")
 
 ![joint_speed@0.02](./docs/images/joint_speeds_0_02.png "Angle Velocity Plots at speed = 0.02 m/s")
 
 3. Tool Speed = 0.04 m/s
-![tool_speed@0.04](./docs/images/tool_speed_0_04.png.png "Tool Speed Plot at speed = 0.04 m/s")
+
+![tool_speed@0.04](./docs/images/tool_speed_0_04.png "Tool Speed Plot at speed = 0.04 m/s")
 
 ![joint_speed@0.04](./docs/images/joint_speeds_0_04.png "Angle Velocity Plots at speed = 0.04 m/s")
 
