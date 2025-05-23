@@ -43,14 +43,21 @@ CartesianTrajectoryServer::CartesianTrajectoryServer(
   this->get_parameter("joint_trajectory_topic", joint_trajectory_topic);
   this->get_parameter("robot_state_topic", robot_state_topic);
   this->get_parameter("link_names", joint_names);
+  RCLCPP_INFO(this->get_logger(), "Retreived the link names from param: ");
+  for (const std::string &l_name : joint_names) {
+    RCLCPP_INFO(this->get_logger(), "joint name in order: %s", l_name.c_str());
+  }
 
   joint_trajectory_publisher =
       this->create_publisher<trajectory_msgs::msg::JointTrajectory>(
           joint_trajectory_topic, 10);
 
+  // std::shared_ptr<IkSolverHandlerInterface> ik_solver_handler =
+  //     std::make_shared<KDLSolverHandler>(urdf_path, chain_start_link,
+  //                                        chain_end_link);
   std::shared_ptr<IkSolverHandlerInterface> ik_solver_handler =
-      std::make_shared<KDLSolverHandler>(urdf_path, chain_start_link,
-                                         chain_end_link);
+      std::make_shared<TracIkSolverHandler>(urdf_path, chain_start_link,
+                                            chain_end_link);
   tg_ = std::make_shared<TrajectoryGenerator>(ik_solver_handler, joint_names);
   auto robot_state_callback =
       [this](sensor_msgs::msg::JointState::SharedPtr msg) {

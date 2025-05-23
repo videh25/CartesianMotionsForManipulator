@@ -44,12 +44,29 @@ TrajectoryGenerator::convertCartesianTrajToJointSpace(
     q_this(i) = 0.0;
     q_vel_this(i) = 0.0;
     jt_point_this.positions.push_back(0);
-    jt_point_this.velocities.push_back(0);
+    // jt_point_this.velocities.push_back(0);
   }
 
   for (double t = 0; t <= duration; t += sampling_dt) {
     pos = cartesian_trajectory->Pos(t);
     twi = cartesian_trajectory->Vel(t);
+    double qx, qy, qz, qw;
+    pos.M.GetQuaternion(qx, qy, qz, qw);
+    KDL::Frame current_ee_pos;
+
+    // std::cout << "[t = " << t << " ]" << "Trying to convert pos.p ("
+    //           << pos.p.x() << ", " << pos.p.y() << ", " << pos.p.z() << ") "
+    //           << std::endl;
+    // std::cout << "[t = " << t << " ]" << "Trying to convert pos.M (" << qx
+    //           << ", " << qy << ", " << qz << ", " << qw << ") " << std::endl;
+    // std::cout << "[t = " << t << " ]"
+    //           << "Trying to convert twi.vel:" << twi.vel.Norm() << std::endl;
+    // std::cout << "[t = " << t << " ]"
+    //           << "Trying to convert twi.rot:" << twi.vel.Norm() << std::endl;
+
+    // KDL::Frame goal_pose(KDL::Rotation::RPY(0, -M_PI / 2, 0),
+    //                      KDL::Vector(0.3, 0.2, 0.5));
+    // std::cout << "Passing test goal pose" << std::endl;
 
     // Convert this pose to cspace
     bool ik_success = ik_solver_handler->ConvertToJointSpaceOnce(
@@ -64,7 +81,7 @@ TrajectoryGenerator::convertCartesianTrajToJointSpace(
     // Store in the trajectory msg
     for (u_int i = 0; i < nj; i++) {
       jt_point_this.positions[i] = q_this(i);
-      jt_point_this.velocities[i] = q_vel_this(i);
+      // jt_point_this.velocities[i] = q_vel_this(i);
     }
     jt_point_this.time_from_start = rclcpp::Duration::from_seconds(t + 5);
     final_joint_trajectory->points.push_back(jt_point_this);
@@ -103,14 +120,13 @@ TrajectoryGenerator::generateCartesianTrajectory(
     const geometry_msgs::msg::PoseArray &waypoints, const float &max_speed,
     const float &max_acc) {
   KDL::Path_RoundedComposite *path = new KDL::Path_RoundedComposite(
-      0.1, 0.001, new KDL::RotationalInterpolation_SingleAxis());
+      0.2, 0.005, new KDL::RotationalInterpolation_SingleAxis());
 
   for (const geometry_msgs::msg::Pose &pose : waypoints.poses) {
-    KDL::Frame frame(
+    path->Add(KDL::Frame(
         KDL::Rotation::Quaternion(pose.orientation.x, pose.orientation.y,
-                                  pose.orientation.z, pose.orientation.z),
-        KDL::Vector(pose.position.x, pose.position.y, pose.position.z));
-    path->Add(frame);
+                                  pose.orientation.z, pose.orientation.w),
+        KDL::Vector(pose.position.x, pose.position.y, pose.position.z)));
   }
   path->Finish();
 

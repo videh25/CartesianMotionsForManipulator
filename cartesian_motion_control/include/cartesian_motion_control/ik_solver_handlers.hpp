@@ -10,6 +10,7 @@
 #include <kdl/jntarray.hpp>
 #include <kdl/tree.hpp>
 #include <kdl_parser/kdl_parser.hpp>
+#include <sys/types.h>
 #include <trac_ik/trac_ik.hpp>
 #include <urdf/model.h>
 
@@ -58,30 +59,56 @@ public:
     unsigned int nj = robot_chain.getNrOfJoints();
     KDL::JntArray q_min(nj), q_max(nj);
     for (u_int i = 0; i < nj; i++) {
-      q_min(i) = -M_PI;
-      q_max(i) = M_PI;
+      q_min(i) = -M_PI * 2;
+      q_max(i) = M_PI * 2;
     }
 
     fk_solver = std::make_shared<KDL::ChainFkSolverPos_recursive>(robot_chain);
     ik_vel_solver = std::make_shared<KDL::ChainIkSolverVel_pinv>(robot_chain);
     ik_pos_solver = std::make_shared<KDL::ChainIkSolverPos_NR_JL>(
-        robot_chain, q_min, q_max, *fk_solver, *ik_vel_solver, 200, 1e-4);
+        robot_chain, q_min, q_max, *fk_solver, *ik_vel_solver, 1e8, 1e-3);
 
     std::vector<std::string> joint_names;
     std::cout << "KDL Parsed " << robot_chain.getNrOfJoints() << " joints"
               << std::endl;
-    std::cout << "Joint Names: [";
+
+    std::cout << "KDL Chain Structure:\n";
     for (unsigned int i = 0; i < robot_chain.getNrOfSegments(); ++i) {
-      const KDL::Joint &joint = robot_chain.getSegment(i).getJoint();
-      KDL::Joint::JointType jtype = joint.getType();
-      if ((jtype == KDL::Joint::JointType::RotAxis) ||
-          (jtype == KDL::Joint::JointType::RotX) ||
-          (jtype == KDL::Joint::JointType::RotY) ||
-          (jtype == KDL::Joint::JointType::RotZ)) {
-        std::cout << joint.getName() << ", ";
+      const KDL::Segment &segment = robot_chain.getSegment(i);
+      const KDL::Joint &joint = segment.getJoint();
+
+      std::string joint_type;
+      switch (joint.getType()) {
+      case KDL::Joint::None:
+        joint_type = "Fixed";
+        break;
+      case KDL::Joint::RotX:
+        joint_type = "RotX";
+        break;
+      case KDL::Joint::RotY:
+        joint_type = "RotY";
+        break;
+      case KDL::Joint::RotZ:
+        joint_type = "RotZ";
+        break;
+      case KDL::Joint::TransX:
+        joint_type = "TransX";
+        break;
+      case KDL::Joint::TransY:
+        joint_type = "TransY";
+        break;
+      case KDL::Joint::TransZ:
+        joint_type = "TransZ";
+        break;
+      default:
+        joint_type = "Other";
+        break;
       }
+
+      std::cout << "Segment: " << segment.getName()
+                << ", Joint: " << joint.getName() << ", Type: " << joint_type
+                << "\n";
     }
-    std::cout << "]" << std::endl;
     return true;
   }
 
@@ -90,6 +117,13 @@ public:
                                const KDL::JntArray &q_last,
                                KDL::JntArray &q_this,
                                KDL::JntArray &q_vel_this) override {
+    KDL::Frame seed_ee_pos;
+    fk_solver->JntToCart(q_last, seed_ee_pos);
+    std::cout << "Seed EE Position: (" << seed_ee_pos.p.x() << ", "
+              << seed_ee_pos.p.y() << ", " << seed_ee_pos.p.z() << ")"
+              << std::endl;
+    std::cout << "Seed EE to current diff: "
+              << (seed_ee_pos.p - this_pos.p).Norm() << std::endl;
 
     int pos_success = ik_pos_solver->CartToJnt(q_last, this_pos, q_this);
     int vel_success = ik_vel_solver->CartToJnt(q_this, this_twist, q_vel_this);
@@ -98,18 +132,20 @@ public:
     case KDL::ChainIkSolverPos_NR_JL::E_MAX_ITERATIONS_EXCEEDED:
       std::cout << "IK failed to calculate position: Max iterations exceeded"
                 << std::endl;
+      return false;
       break;
     case KDL::ChainIkSolverPos_NR_JL::E_NOT_UP_TO_DATE:
       std::cout << "IK failed to calculate position: Internal data outdated"
                 << std::endl;
+      return false;
       break;
     case KDL::ChainIkSolverPos_NR_JL::E_SIZE_MISMATCH:
       std::cout << "IK failed to calculate position: Size mismatched"
                 << std::endl;
+      return false;
       break;
     case KDL::ChainIkSolverPos_NR_JL::E_NOERROR:
       std::cout << "IK Successful" << std::endl;
-      return true;
       break;
     }
 
@@ -117,16 +153,17 @@ public:
     case KDL::ChainIkSolverVel_pinv::E_CONVERGE_PINV_SINGULAR:
       std::cout << "IK failed to calculate velocity: pinv singular"
                 << std::endl;
+      return false;
       break;
     case KDL::ChainIkSolverVel_pinv::E_SVD_FAILED:
       std::cout << "IK failed to calculate velocity: SVD failed" << std::endl;
+      return false;
       break;
     case KDL::ChainIkSolverVel_pinv::E_NOERROR:
       std::cout << "IK velocity Successful" << std::endl;
-      return true;
       break;
     }
-    return false;
+    return true;
 
     // Check if ik is working correctly
     // KDL::Frame test_frame;
@@ -135,7 +172,7 @@ public:
     //   std::cout << "IK Failure detected in frame vector" << std::endl;
     // }
     // if (!KDL::Equal(test_frame.M, this_pos.M, 1e-4)) {
-    //   std::cout << "IK Failure detected in frame rotation" << std::endl;
+    // std::cout << "IK Failure detected in frame rotation" << std::endl;
     // }
   }
 
@@ -168,30 +205,58 @@ public:
     unsigned int nj = robot_chain.getNrOfJoints();
     KDL::JntArray q_min(nj), q_max(nj);
     for (u_int i = 0; i < nj; i++) {
-      q_min(i) = -M_PI;
-      q_max(i) = M_PI;
+      q_min(i) = -M_PI * 2;
+      q_max(i) = M_PI * 2;
     }
 
     fk_solver = std::make_shared<KDL::ChainFkSolverPos_recursive>(robot_chain);
     ik_vel_solver = std::make_shared<KDL::ChainIkSolverVel_pinv>(robot_chain);
-    ik_pos_solver =
-        std::make_shared<TRAC_IK::TRAC_IK>(robot_chain, q_min, q_max, 1e-4);
+    ik_pos_solver = std::make_shared<TRAC_IK::TRAC_IK>(
+        robot_chain, q_min, q_max, 0.01, 1e-2, TRAC_IK::SolveType::Distance);
 
     std::vector<std::string> joint_names;
     std::cout << "KDL Parsed " << robot_chain.getNrOfJoints() << " joints"
               << std::endl;
-    std::cout << "Joint Names: [";
+    std::cout << "KDL Parsed " << robot_chain.getNrOfJoints() << " joints"
+              << std::endl;
+
+    std::cout << "KDL Chain Structure:\n";
     for (unsigned int i = 0; i < robot_chain.getNrOfSegments(); ++i) {
-      const KDL::Joint &joint = robot_chain.getSegment(i).getJoint();
-      KDL::Joint::JointType jtype = joint.getType();
-      if ((jtype == KDL::Joint::JointType::RotAxis) ||
-          (jtype == KDL::Joint::JointType::RotX) ||
-          (jtype == KDL::Joint::JointType::RotY) ||
-          (jtype == KDL::Joint::JointType::RotZ)) {
-        std::cout << joint.getName() << ", ";
+      const KDL::Segment &segment = robot_chain.getSegment(i);
+      const KDL::Joint &joint = segment.getJoint();
+
+      std::string joint_type;
+      switch (joint.getType()) {
+      case KDL::Joint::None:
+        joint_type = "Fixed";
+        break;
+      case KDL::Joint::RotX:
+        joint_type = "RotX";
+        break;
+      case KDL::Joint::RotY:
+        joint_type = "RotY";
+        break;
+      case KDL::Joint::RotZ:
+        joint_type = "RotZ";
+        break;
+      case KDL::Joint::TransX:
+        joint_type = "TransX";
+        break;
+      case KDL::Joint::TransY:
+        joint_type = "TransY";
+        break;
+      case KDL::Joint::TransZ:
+        joint_type = "TransZ";
+        break;
+      default:
+        joint_type = "Other";
+        break;
       }
+
+      std::cout << "Segment: " << segment.getName()
+                << ", Joint: " << joint.getName() << ", Type: " << joint_type
+                << "\n";
     }
-    std::cout << "]" << std::endl;
     return true;
   }
 
@@ -201,20 +266,58 @@ public:
                                KDL::JntArray &q_this,
                                KDL::JntArray &q_vel_this) override {
     KDL::Twist tol;
-    tol = KDL::Twist(KDL::Vector(0.01, 0.01, 0.01), KDL::Vector(0.1, 0.1, 0.1));
+    tol = KDL::Twist(KDL::Vector(0.1, 0.1, 0.1), KDL::Vector(0.1, 0.1, 0.1));
 
-    ik_pos_solver->CartToJnt(q_last, this_pos, q_this, tol);
-    ik_vel_solver->CartToJnt(q_this, this_twist, q_vel_this);
+    KDL::Frame seed_ee_pos;
+    fk_solver->JntToCart(q_last, seed_ee_pos);
+    // std::cout << "Seed EE Position: (" << seed_ee_pos.p.x() << ", "
+    //           << seed_ee_pos.p.y() << ", " << seed_ee_pos.p.z() << ")"
+    //           << std::endl;
+    // std::cout << "Seed EE to current diff: "
+    //           << (seed_ee_pos.p - this_pos.p).Norm() << std::endl;
 
+    int pos_success = ik_pos_solver->CartToJnt(q_last, this_pos, q_this, tol);
+    int vel_success = ik_vel_solver->CartToJnt(q_this, this_twist, q_vel_this);
+
+    if (pos_success <= 0) {
+      std::cout << "IK failed to calculate position" << std::endl;
+      return false;
+    } else {
+      std::cout << "IK position successful" << std::endl;
+    }
+
+    switch (vel_success) {
+    case KDL::ChainIkSolverVel_pinv::E_CONVERGE_PINV_SINGULAR:
+      std::cout << "IK failed to calculate velocity: pinv singular"
+                << std::endl;
+      return false;
+      break;
+    case KDL::ChainIkSolverVel_pinv::E_SVD_FAILED:
+      std::cout << "IK failed to calculate velocity: SVD failed" << std::endl;
+      return false;
+      break;
+    case KDL::ChainIkSolverVel_pinv::E_NOERROR:
+      std::cout << "IK velocity Successful" << std::endl;
+      break;
+    }
     // Check if ik is working correctly
-    KDL::Frame test_frame;
-    fk_solver->JntToCart(q_this, test_frame);
-    if (!KDL::Equal(test_frame.p, this_pos.p, 1e-4)) {
-      std::cout << "IK Failure detected in frame vector" << std::endl;
-    }
-    if (!KDL::Equal(test_frame.M, this_pos.M, 1e-4)) {
-      std::cout << "IK Failure detected in frame rotation" << std::endl;
-    }
+    // KDL::Frame test_frame;
+    // fk_solver->JntToCart(q_this, test_frame);
+    // if (!KDL::Equal(test_frame.p, this_pos.p, 1e-4)) {
+    //   std::cout << "IK Failure detected in frame vector" << std::endl;
+    // }
+    // if (!KDL::Equal(test_frame.M, this_pos.M, 1e-4)) {
+    //   std::cout << "IK Failure detected in frame rotation" << std::endl;
+    // }
+    // std::cout << "IK Solution for (" << this_pos.p.x() << ", " <<
+    // this_pos.p.y()
+    //           << ", " << this_pos.p.z() << ") is :::" << std::endl;
+    // std::cout << "(";
+    // for (u_int i = 0; i < 6; i++) {
+    //   std::cout << q_this(i) << ", ";
+    // }
+    // std::cout << std::endl;
+    return true;
   }
 
 protected:

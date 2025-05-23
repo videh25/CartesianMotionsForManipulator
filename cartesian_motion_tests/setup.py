@@ -20,6 +20,8 @@ setup(
     entry_points={
         "console_scripts": [
             "send_goal=cartesian_motion_tests.send_cartesian_goal:main",
+            "joint_wise_cmd=cartesian_motion_tests.controller_tune:main",
+            "plot_graphs=cartesian_motion_tests.motion_plotter:main",
         ],
     },
 )

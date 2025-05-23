@@ -4,6 +4,7 @@ from rclpy.node import Node
 
 from geometry_msgs.msg import Pose, Point, Quaternion, PoseArray
 from builtin_interfaces.msg import Time
+import numpy as np
 
 from cartesian_motion_interfaces.action import CartesianTrajectory
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
@@ -83,39 +84,36 @@ def main(args=None):
     # === EDIT WAYPOINTS HERE ===
     target_positions = [  # Tested ik to start the following trajectory
         0.0,
-        -1.57,
+        -np.pi / 2,
         0.0,
-        -1.57,
-        -1.57,
+        -np.pi / 2,
+        -np.pi / 2,
         0.0,
     ]
     target_positions = [  # Tested ik to start the following trajectory
-        0.033,
-        -2.221,
-        1.245,
-        -2.089,
+        0.000,
+        -2.155,
+        1.504,
+        -2.553,
         -1.558,
-        0.099,
-    ]
-    target_positions = [  # Tested ik to start the following trajectory
-        -1.231208490265788,
-        3.141592653589793,
-        -3.141592653589793,
-        3.141592653589793,
-        2.3076580651934524,
-        3.141592653589793,
+        0.000,
     ]
     poses = [
-        # Y motions
-        make_pose(0.059, 0.135, 0.917),
-        make_pose(0.059, 0.185, 0.917),
-        # Z motions
-        # make_pose(0.059, 0.135, 0.917),
-        # make_pose(0.059, 0.135, 1.417),
+        # make_pose(0.168, 0.635, 0.856, -0.5, 0.5, -0.5, 0.5),
+        # make_pose(0.168, 0.085, 0.856, -0.5, 0.5, -0.5, 0.5),
+        # make_pose(0.168, 0.085, 0.756, -0.5, 0.5, -0.5, 0.5),
+        # make_pose(0.168, 0.635, 0.756, -0.5, 0.5, -0.5, 0.5),
+        #
+        make_pose(0.168, 0.135, 0.856, -0.5, 0.5, -0.5, 0.5),
+        make_pose(0.168, 0.135, 0.556, -0.5, 0.5, -0.5, 0.5),
+        # make_pose(0.168, 0.435, 0.756, -0.5, 0.5, -0.5, 0.5),
+        #
+        # make_pose(0.202, 0.165, 1.106, -0.488, 0.481, -0.512, 0.518),
+        # make_pose(0.202, 0.165, 0.606, -0.488, 0.481, -0.512, 0.518),
     ]
 
-    max_speed = 0.8  # m/s
-    max_acc = 0.1  # m/s²
+    max_speed = 0.01  # m/s
+    max_acc = 0.05  # m/s²
 
     traj_msg = JointTrajectory()
     traj_msg.joint_names = client.joint_names
@@ -124,8 +122,8 @@ def main(args=None):
     point.time_from_start.sec = 2  # reach target in 2 seconds
     traj_msg.points.append(point)
     # client.joint_angles_publisher.publish(traj_msg)
-    # print("Sleeping for 10 seconds after publishing initial angles")
-    # sleep(10)
+    print("Sleeping for 10 seconds after publishing initial angles")
+    sleep(10)
 
     client.send_goal(poses, max_speed, max_acc)
     rclpy.spin(client)
